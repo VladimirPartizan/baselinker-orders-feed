@@ -7,16 +7,14 @@
   - Поддерживает простые фильтры: date_from, date_to (ISO или UNIX seconds), limit
 
   Пререквизиты:
-  - У тебя должен быть API-ключ BaseLinker (внутри кабинета BaseLinker -> Мой аккаунт -> API)
-  - В Vercel в настройках проекта нужно добавить переменную окружения:
-      BASELINKER_API_TOKEN = "твой_ключ_из_baselinker"
+  - В код напрямую вписан API-ключ BaseLinker.
+  - API-ключ должен быть действующим.
 
   Как разместить:
   1) Создай проект Next.js (или используй существующий), положи этот файл в /pages/api/orders.js
   2) Запушь в GitHub и подключи проект к Vercel
-  3) В Vercel добавь env var BASELINKER_API_TOKEN
-  4) Деплой — и endpoint будет:
-       https://<твoй-проект>.vercel.app/api/orders
+  3) Деплой — и endpoint будет:
+        https://<твoй-проект>.vercel.app/api/orders
 
   Примеры запросов к твоему фиду:
   - JSON (всё):
@@ -40,10 +38,8 @@
 
 // Next.js / Vercel API route
 export default async function handler(req, res) {
-  const TOKEN = process.env.8002656-8006681-H4SJ9VECZ4LQBY3U72QHYTU9R8CLA5VZTDGD6GSFXDKCEH3MVPKV2P4AGCPKID8Y;
-  if (!TOKEN) {
-    return res.status(500).json({ error: '8002656-8006681-H4SJ9VECZ4LQBY3U72QHYTU9R8CLA5VZTDGD6GSFXDKCEH3MVPKV2P4AGCPKID8Y not set in environment' });
-  }
+  // Ваш API-ключ вписан напрямую в код.
+  const TOKEN = "8002656-8006681-H4SJ9VECZ4LQBY3U72QHYTU9R8CLA5VZTDGD6GSFXDKCEH3MVPKV2P4AGCPKID8Y";
 
   try {
     const { format = 'json', date_from, date_to, limit = '100' } = req.query;
