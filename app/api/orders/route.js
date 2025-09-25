@@ -10,57 +10,65 @@
 
 export const dynamic = 'force-dynamic';
 
-// Ваши вспомогательные функции, которые нужны для этого файла
+// Вспомогательные функции
 function parseDateToUnix(v) {
-    if (!v) return NaN;
-    if (/^\d+$/.test(String(v))) return Number(v);
-    const t = Date.parse(String(v));
-    if (Number.isNaN(t)) return NaN;
-    return Math.floor(t / 1000);
-}
-
-function ordersToCsv(orders) {
-    const rows = orders.map(o => {
-        const orderId = o.order_id ?? o.order_number ?? o.order_no ?? '';
-        const dateConfirmed = o.date_confirmed ? unixToIso(o.date_confirmed) : (o.date_add ? unixToIso(o.date_add) : '');
-        const customerName = (o.customer && (o.customer.name || `${o.customer.first_name || ''} ${o.customer.last_name || ''}`)) || o.customer_name || o.name || '';
-        const total = o.total_price ?? o.total_brutto ?? o.total ?? '';
-        const items = o.items ?? o.products ?? o.order_products ?? o.order_items ?? [];
-        return {
-            order_id: String(orderId),
-            date_confirmed: dateConfirmed,
-            customer_name: String(customerName),
-            total_price: String(total),
-            items: JSON.stringify(items)
-        };
-    });
-
-    const header = ['order_id', 'date_confirmed', 'customer_name', 'total_price', 'items'];
-    const lines = [header.join(',')];
-    for (const r of rows) {
-        const cols = header.map(h => escapeCsv(String(r[h] ?? '')));
-        lines.push(cols.join(','));
-    }
-    return lines.join('\n');
+  if (!v) return NaN;
+  if (/^\d+$/.test(String(v))) return Number(v);
+  const t = Date.parse(String(v));
+  if (Number.isNaN(t)) return NaN;
+  return Math.floor(t / 1000);
 }
 
 function unixToIso(v) {
-    if (!v) return '';
-    const n = Number(v);
-    if (Number.isNaN(n)) return '';
-    return new Date(n * 1000).toISOString();
+  if (!v) return '';
+  const n = Number(v);
+  if (Number.isNaN(n)) return '';
+  return new Date(n * 1000).toISOString();
 }
 
 function escapeCsv(s) {
-    if (s == null) return '';
-    const s2 = String(s).replace(/"/g, '""');
-    if (s2.search(/[",\n]/) !== -1) return `"${s2}"`;
-    return s2;
+  if (s == null) return '';
+  const s2 = String(s).replace(/"/g, '""');
+  if (s2.search(/[",\n]/) !== -1) return `"${s2}"`;
+  return s2;
+}
+
+// Обновленная функция для CSV, где товары раскладываются по столбцам
+function ordersToCsv(orders) {
+  const header = ['order_id', 'date_confirmed', 'customer_name', 'total_price', 'item_sku', 'item_name', 'item_quantity', 'item_price_brutto'];
+  const lines = [header.join(',')];
+
+  for (const o of orders) {
+    const baseFields = [
+      escapeCsv(o.order_id ?? ''),
+      escapeCsv(o.date_confirmed ? unixToIso(o.date_confirmed) : (o.date_add ? unixToIso(o.date_add) : '')),
+      escapeCsv((o.customer && (o.customer.name || `${o.customer.first_name || ''} ${o.customer.last_name || ''}`)) || o.customer_name || o.name || ''),
+      escapeCsv(o.total_price ?? o.total_brutto ?? o.total ?? '')
+    ];
+
+    const items = o.items ?? o.products ?? o.order_products ?? o.order_items ?? [];
+
+    if (items.length === 0) {
+      // Нет товаров, добавляем строку с пустыми полями товаров
+      lines.push(baseFields.join(',') + ',,,');
+    } else {
+      for (const item of items) {
+        const itemFields = [
+          escapeCsv(item.sku ?? ''),
+          escapeCsv(item.name ?? ''),
+          escapeCsv(item.quantity ?? ''),
+          escapeCsv(item.price_brutto ?? '')
+        ];
+        lines.push(baseFields.join(',') + ',' + itemFields.join(','));
+      }
+    }
+  }
+
+  return lines.join('\n');
 }
 
 // Основной обработчик запроса
 export async function GET(request) {
-  // Ваш API-ключ вписан напрямую в код.
   const TOKEN = "8002656-8006681-H4SJ9VECZ4LQBY3U72QHYTU9R8CLA5VZTDGD6GSFXDKCEH3MVPKV2P4AGCPKID8Y";
 
   try {
@@ -70,9 +78,7 @@ export async function GET(request) {
     const date_to = searchParams.get('date_to');
     const limit = searchParams.get('limit') || '100';
 
-    // Подготовим параметры для BaseLinker
     const paramsObj = {};
-
     if (date_from) {
       const d = parseDateToUnix(date_from);
       if (!Number.isNaN(d)) paramsObj.date_confirmed_from = d;
@@ -82,11 +88,9 @@ export async function GET(request) {
       if (!Number.isNaN(d)) paramsObj.date_confirmed_to = d;
     }
 
-    // Ограничение на количество (пример)
     const lim = Number(limit) || 100;
     paramsObj.limit = lim;
 
-    // Собираем form body
     const body = new URLSearchParams();
     body.append('token', TOKEN);
     body.append('method', 'getOrders');
@@ -94,9 +98,7 @@ export async function GET(request) {
 
     const resp = await fetch('https://api.baselinker.com/connector.php', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString()
     });
 
@@ -118,7 +120,7 @@ export async function GET(request) {
       });
     }
 
-    if (String(format).toLowerCase() === 'csv') {
+    if (format.toLowerCase() === 'csv') {
       const csv = ordersToCsv(orders);
       return new Response(csv, {
         status: 200,
@@ -129,6 +131,7 @@ export async function GET(request) {
       });
     }
 
+    // JSON по умолчанию
     return new Response(JSON.stringify(orders), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
