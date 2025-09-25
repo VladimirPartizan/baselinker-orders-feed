@@ -8,6 +8,8 @@
   - Поддерживает простые фильтры: date_from, date_to (ISO или UNIX seconds), limit
 */
 
+export const dynamic = 'force-dynamic';
+
 // Ваши вспомогательные функции, которые нужны для этого файла
 function parseDateToUnix(v) {
     if (!v) return NaN;
@@ -55,7 +57,6 @@ function escapeCsv(s) {
     if (s2.search(/[",\n]/) !== -1) return `"${s2}"`;
     return s2;
 }
-
 
 // Основной обработчик запроса
 export async function GET(request) {
@@ -141,5 +142,3 @@ export async function GET(request) {
     });
   }
 }
-
-
